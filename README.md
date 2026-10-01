@@ -15,6 +15,13 @@ kódjának elemzésével azonosítottuk; a szeptemberi havi és éves felhővál
 Helyben CSV-exportot készít; GitHub Actionsből kézzel vagy hetente futtatható,
 és HTML e-mailben is elküldi a napi bontást, a grafikont és a CSV-mellékletet.
 
+## Automatikus kódellenőrzés
+
+A [Forráskód ellenőrzése](https://github.com/ak91hu/aux-stat/actions/workflows/ci.yml)
+pipeline minden `main` ágra történő push és az ágra nyitott pull request esetén
+lefuttatja a teszteket Python 3.11-en és a legfrissebb stabil Python 3-on.
+Kézzel is indítható, secretek nélkül; nem kérdez fogyasztást és nem küld e-mailt.
+
 ## GitHub Actions és heti e-mail
 
 A repository: [ak91hu/aux-stat](https://github.com/ak91hu/aux-stat).
@@ -39,8 +46,9 @@ A **Csak tesztek** mód felhőbejelentkezés és e-mail-küldés nélkül fut.
 Normál futásnál az eredmények az `aux-energy-...` artifactban tölthetők le
 7 napig. Az e-mail összesítést, napi átlagot, legnagyobb napi értéket,
 a legutóbbi 31 nap grafikonját és a teljes időszak CSV-jét tartalmazza.
-A hiányzó és részleges napokat külön jelöli. Hiányzó SMTP-beállítás vagy
-sikertelen küldés hibássá teszi a workflow-t.
+A hiányzó és részleges napokat külön jelöli. A workflow a felhőbejelentkezés előtt ellenőrzi a szükséges beállításokat,
+és hiány esetén csak a hiányzó változók nevét írja ki. Sikertelen
+levélküldés hibássá teszi a workflow-t.
 
 Részletes beállítás és SMTP-példa: **[GITHUB.md](GITHUB.md)**.
 

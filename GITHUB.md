@@ -105,3 +105,16 @@ Az első technikai próba a **Csak tesztek** opcióval secret nélkül is futtat
 
 [GitHub: Actions secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions),
 [artifactok](https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-what-your-workflow-does/storing-and-sharing-data-from-a-workflow).
+
+## Automatikus CI és indulás előtti ellenőrzés
+
+A [Forráskód ellenőrzése](https://github.com/ak91hu/aux-stat/actions/workflows/ci.yml)
+workflow minden `main` push és az ágra nyitott pull request esetén tesztel
+Python 3.11-en és a legfrissebb stabil Python 3-on. Kézzel is indítható.
+Ez a pipeline nem használ secreteket, nem jelentkezik be a felhőbe és nem küld levelet.
+
+A fogyasztási workflow normál futás előtt ellenőrzi az `ACFREEDOM_USERNAME`,
+`ACFREEDOM_PASSWORD`, `EMAIL_TO`, `EMAIL_FROM`, `SMTP_HOST`, `SMTP_USERNAME`
+és `SMTP_PASSWORD` beállításokat. Hiány esetén a változók neve jelenik meg,
+az értékük nem. A lekérés és a levélküldés ilyen esetben elmarad.
+A **Csak tesztek** mód továbbra is secretek nélkül működik.

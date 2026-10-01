@@ -52,6 +52,27 @@ jobs:
         run: python -m pip install -r requirements.txt -r requirements-email.txt
       - name: Tesztek (felhőhívás nélkül)
         run: python -m unittest discover -s tests -v
+      - name: Szükséges beállítások ellenőrzése
+        id: config
+        if: ${{ !inputs.test_only }}
+        env:
+          ACFREEDOM_USERNAME: ${{ secrets.ACFREEDOM_USERNAME }}
+          ACFREEDOM_PASSWORD: ${{ secrets.ACFREEDOM_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST || vars.SMTP_HOST }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        shell: bash
+        run: |
+          missing=0
+          for name in ACFREEDOM_USERNAME ACFREEDOM_PASSWORD EMAIL_TO EMAIL_FROM SMTP_HOST SMTP_USERNAME SMTP_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Hiányzó beállítás: $name. Lásd a GITHUB.md útmutatót."
+              missing=1
+            fi
+          done
+          exit "$missing"
       - name: Fogyasztás lekérése
         if: ${{ !inputs.test_only }}
         env:
@@ -72,7 +93,7 @@ jobs:
           fi
           exit "$result"
       - name: Eredmények mentése
-        if: ${{ always() && !inputs.test_only }}
+        if: ${{ always() && !cancelled() && !inputs.test_only && steps.config.outcome == 'success' }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6, Node.js 24
         with:
           name: aux-energy-${{ github.run_id }}
@@ -80,7 +101,7 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
       - name: Fogyasztási riport küldése e-mailben
-        if: ${{ always() && !inputs.test_only }}
+        if: ${{ always() && !cancelled() && !inputs.test_only && steps.config.outcome == 'success' }}
         env:
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
