@@ -1,4 +1,4 @@
-# AC Freedom Energy Probe v3
+# AUX Stat — AC Freedom fogyasztási riportok
 
 Önálló Python-program Windowsra, az AC Freedom / AUX Cloud fogyasztási adatainak
 lekérdezésére. Bejelentkezik, felderíti az eszközöket, majd a kiválasztott eszköz
@@ -6,22 +6,51 @@ fogyasztását alapértelmezésben a telepítési dátumtól, **2026-09-16-tól*
 bontásban. Nem változtatja a klíma
 beállításait és nem töröl adatot.
 
-A v2 az AC Freedom 4.1.3 alkalmazás c0620000 termékhez tartozó fogyasztási
-képernyőjének kérését követi. Az első verzió által tesztelt általános BroadLink
-konnektor-riportok helyett az AUX saját riportjait használja. A kérés és a kWh
-feldolgozása alkalmazáskód alapján azonosított; a felhőadatokat és az appal való
-számszerű egyezést valódi fiókkal még ellenőrizni kell.
+A program az AC Freedom 4.1.3 alkalmazás c0620000 termékhez tartozó
+fogyasztási képernyőjének AUX-riportjait használja. A protokollt az alkalmazás
+kódjának elemzésével azonosítottuk; a szeptemberi havi és éves felhőválaszok
+összevetése is megtörtént. Más eszközöknél és időszakoknál az eredményeket
+érdemes az alkalmazás megfelelő fogyasztási nézetével ellenőrizni.
+
+Helyben CSV-exportot készít; GitHub Actionsből kézzel vagy hetente futtatható,
+és HTML e-mailben is elküldi a napi bontást, a grafikont és a CSV-mellékletet.
+
+## GitHub Actions és heti e-mail
+
+A repository: [ak91hu/aux-stat](https://github.com/ak91hu/aux-stat).
+
+1. A [repository Secrets beállításaiban](https://github.com/ak91hu/aux-stat/settings/secrets/actions)
+   add meg az `ACFREEDOM_USERNAME` és `ACFREEDOM_PASSWORD` secreteket.
+2. Az e-mailhez szükséges secretek: `EMAIL_TO`, `EMAIL_FROM`,
+   `SMTP_USERNAME`, `SMTP_PASSWORD`. Az `SMTP_HOST` és `SMTP_PORT` secretként
+   vagy repository variable-ként is megadható; az alapértelmezett port `587`.
+3. Több klímánál az `ACFREEDOM_DEVICE` repository variable értéke legyen a
+   pontos eszköznév vagy endpointId. Az `ACFREEDOM_REGION` alapértéke `eu`.
+4. Az [Actions → AUX napi fogyasztás](https://github.com/ak91hu/aux-stat/actions/workflows/energy.yml)
+   oldalon válaszd a **Run workflow** lehetőséget a `main` ágon.
+   A kezdőnap alapértéke `2026-09-16`; üres zárónap esetén a mai napig kérdez.
+
+A workflow vasárnap **20:00-kor, Europe/Budapest időzóna szerint** van
+ütemezve. A kézi indítás is elérhető; a push nem indít fogyasztáslekérést.
+Az új repóban a secreteket külön kell beállítani: a forráskód feltöltése
+nem másolja át másik repó belépési vagy SMTP-adatait.
+
+A **Csak tesztek** mód felhőbejelentkezés és e-mail-küldés nélkül fut.
+Normál futásnál az eredmények az `aux-energy-...` artifactban tölthetők le
+7 napig. Az e-mail összesítést, napi átlagot, legnagyobb napi értéket,
+a legutóbbi 31 nap grafikonját és a teljes időszak CSV-jét tartalmazza.
+A hiányzó és részleges napokat külön jelöli. Hiányzó SMTP-beállítás vagy
+sikertelen küldés hibássá teszi a workflow-t.
+
+Részletes beállítás és SMTP-példa: **[GITHUB.md](GITHUB.md)**.
 
 ## Windowsos indítás
-
-**GitHub repository:** [ak91hu/aux-stat](https://github.com/ak91hu/aux-stat).
-Kézzel indítható GitHub Actions és titkos belépési adatok:
-**[GitHub beállítási útmutató](GITHUB.md)**.
 
 GitLabon titkos változókkal, kézzel indítható pipeline-ban is futtatható:
 **[GitLab beállítási útmutató](GITLAB.md)**. A Windowsos START.bat továbbra is használható.
 
-1. Python 3.11 vagy újabb verzió szükséges a `py` Python Launcherrel.
+1. Töltsd le és csomagold ki a [forráskódot](https://github.com/ak91hu/aux-stat/archive/refs/heads/main.zip).
+   Python 3.11 vagy újabb verzió szükséges a `py` Python Launcherrel.
 2. Kattints duplán a **START.bat** fájlra. Első alkalommal létrehozza a `.venv`
    környezetet és telepíti a függőségeket; rendszergazdai jogosultság nem kell.
 3. Az első kérdésnél közvetlenül megadhatod az AC Freedom e-mail-címét vagy
@@ -42,7 +71,8 @@ mentésre. Jogosultsági, munkamenet-, gyakorisági vagy HTTP 5xx hibánál meg�
 ## PowerShell
 
 ```powershell
-cd C:\aux-toolkit
+git clone https://github.com/ak91hu/aux-stat.git
+cd aux-stat
 py -3 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe acfreedom_energy_probe.py
@@ -57,7 +87,7 @@ Csak az éves nézet:
 Szeptemberi havi fogyasztás:
 
 ```powershell
-.\.venv\Scripts\python.exe acfreedom_energy_probe.py --view month --end 2026-09-15
+.\.venv\Scripts\python.exe acfreedom_energy_probe.py --view month --end 2026-09-30
 ```
 
 Alapértelmezett napi bontásnál a `--start` és `--end` valódi, mindkét végén
@@ -69,8 +99,8 @@ beleértett intervallumot jelöl. Például:
 
 Az explicit `--view year|month|day|all` az app megfelelő nézetét adja; ezeknél az
 `--end` a vizsgált dátum, és a teljes év/hónap/nap kerül lekérdezésre. A fenti
-havi parancs ezért egész szeptembert kérdezi le. A napi bontás indításonként
-automatikus; időzített háttérfutás még nincs beállítva.
+havi parancs ezért egész szeptembert kérdezi le. A helyi indítás egyszeri
+lekérdezést végez; a heti automatizálást a GitHub Actions workflow adja.
 
 További kapcsolók: `--region eu|usa|cn|rus`, `--kind email|phone`, `--username`,
 `--device "AUX Aura"`, `--list-only`, `--output C:\ACFreedomResults`,
@@ -117,16 +147,30 @@ követi ezeket a megjelenítési korlátokat; a napi bontásban a mai napot kül
 napi lekérdezéssel, részleges értékként pótolja. A szervertől visszakapott időbélyegeket
 az apphoz hasonlóan kezeli; az AUX v2 kérés dátumát nem tolja el UTC+8-ra.
 
-**Üres válasz nem jelent 0 kWh fogyasztást.** Hiányzó értékekből nem számít
-fogyasztási összeget. A megfelelő app nézettel való összevetéshez a legújabb
-futás `summary.json` és `energy_daily.csv` fájlját küldd vissza.
+**Üres válasz nem jelent 0 kWh fogyasztást.** A hiányzó napokat nem számolja
+nullának; az összeg csak az ismert méréseket tartalmazza. Az alkalmazással való
+összevetéshez a legújabb futás `summary.json` és `energy_daily.csv` fájlját használd.
 
 Kilépési kódok: 0 = eszközlista vagy felismert adat; 2 = nincs felismert adat;
 1 = hiba; 130 = megszakítás. A `--legacy-probe` a régi, általános BroadLink
 riportok diagnosztikáját futtatja a korábbi `--start` / `--end` intervallummal.
 Az ottani számok mértékegysége továbbra is ismeretlen lehet.
 
-## A javítás forrása és ellenőrzése
+## Belépési adatok és mentések
+
+A repository nem tartalmaz személyes jelszót, hozzáférési tokent vagy SMTP-adatot.
+A belépés helyben rejtett jelszóbekéréssel vagy környezeti változókból történik;
+GitHub Actionsben repository secreteket használ. Kérdés nélküli futtatáshoz
+az `ACFREEDOM_USERNAME` és `ACFREEDOM_PASSWORD` változók mellett a
+`--non-interactive` kapcsoló szükséges. A program nem tölti be automatikusan
+az `.env` fájlokat.
+
+A `.gitignore` kizárja a helyi `output/`, `.venv/` és `.env` fájlokat.
+A mentésekben a program kitakarja a felismert hitelesítési és eszközazonosító
+mezőket; megosztás előtt ellenőrizd a fájlok tartalmát. A `vendor_constants.py`
+a működéshez szükséges, nyilvános protokollállandókat tartalmazza.
+
+## A protokoll forrása és ellenőrzése
 
 A tényleges AUX útvonal: `POST /appfront/v1/webapi/device/stats`.
 A riportok: `fw_auxoverseayearconsum_v1`, `fw_auxoverseamonthconsum_v1`,
@@ -134,7 +178,8 @@ A riportok: `fw_auxoverseayearconsum_v1`, `fw_auxoverseamonthconsum_v1`,
 Az éves kérés szokatlan januári 00. napját is az app kódjának megfelelően küldi.
 A részletes forráselemzés: [research/ENERGY_PROTOCOL.md](research/ENERGY_PROTOCOL.md).
 
-Automatizált tesztek (szimulált felhőválaszokkal):
+Automatizált tesztek (szimulált és kitakart rögzített felhőválaszokkal;
+valódi bejelentkezés és levélküldés nélkül):
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-email.txt
@@ -142,8 +187,9 @@ Automatizált tesztek (szimulált felhőválaszokkal):
 ```
 
 A tesztek bejelentkezést, felderítést, kérésformátumot, naptári időszakokat,
-adatfeldolgozást, összegzést, adatkiszűrést és hibakezelést ellenőriznek.
-A szimulált 43,66 kWh tesztérték nem a fiókból lekért mérés.
+adatfeldolgozást, összegzést, adatkiszűrést és hibakezelést ellenőriznek,
+valamint a HTML e-mailt, a beágyazott grafikont és az SMTP TLS-kapcsolatát.
+A tesztek a személyes belépési adatokat helyettesítő mintaértékeket használnak.
 
 A bejelentkezés/inventory a [ha-aux-cloud](https://github.com/maeek/ha-aux-cloud)
 MIT forrására épül, commit: `85ae111e77e92edd1b104b55a57f81ebe4c75cab`.
