@@ -1,0 +1,48 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - when: never
+
+stages:
+  - test
+  - collect
+
+default:
+  image: python:3.11-slim
+  before_script:
+    - python -m pip install -r requirements.txt -r requirements-email.txt
+  cache:
+    key:
+      files:
+        - requirements.txt
+        - requirements-email.txt
+    paths:
+      - .cache/pip/
+
+variables:
+  PYTHONUNBUFFERED: "1"
+  PYTHONUTF8: "1"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  ACFREEDOM_REGION: "eu"
+  ACFREEDOM_START: "2026-09-16"
+
+test:
+  stage: test
+  script:
+    - python -m unittest discover -s tests -v
+
+energy:
+  stage: collect
+  resource_group: acfreedom-cloud
+  timeout: 15m
+  script:
+    - python acfreedom_energy_probe.py --non-interactive --output output
+  allow_failure:
+    exit_codes: 2
+  artifacts:
+    name: "acfreedom-energy-$CI_PIPELINE_ID"
+    when: always
+    access: maintainer
+    expire_in: 7 days
+    paths:
+      - output/

@@ -1,0 +1,18 @@
+{
+  "status": 0,
+  "msg": "ok",
+  "report": "fw_auxoverseayearconsum_v1",
+  "table": [
+    {
+      "did": "<redacted>",
+      "total": 1,
+      "cnt": 1,
+      "values": [
+        {
+          "occurtime": "2026-09-00_00:00:00",
+          "tenelec": 43.65625
+        }
+      ]
+    }
+  ]
+}

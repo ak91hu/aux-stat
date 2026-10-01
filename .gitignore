@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+output/
+upstream-ha-aux-cloud/
+*.zip
+research/acfreedom.apk
+research/aura_resources/
+.cache/
+.env
+.env.*

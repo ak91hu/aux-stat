@@ -1,0 +1,74 @@
+{
+  "status": 0,
+  "msg": "ok",
+  "report": "fw_auxoverseamonthconsum_v1",
+  "table": [
+    {
+      "did": "<redacted>",
+      "total": 15,
+      "cnt": 15,
+      "values": [
+        {
+          "occurtime": "2026-09-16_00:00:00",
+          "tenelec": 0.03125
+        },
+        {
+          "occurtime": "2026-09-17_00:00:00",
+          "tenelec": 3.59375
+        },
+        {
+          "occurtime": "2026-09-18_00:00:00",
+          "tenelec": 3.5
+        },
+        {
+          "occurtime": "2026-09-19_00:00:00",
+          "tenelec": 1.0625
+        },
+        {
+          "occurtime": "2026-09-20_00:00:00",
+          "tenelec": 2.4375
+        },
+        {
+          "occurtime": "2026-09-21_00:00:00",
+          "tenelec": 5.5625
+        },
+        {
+          "occurtime": "2026-09-22_00:00:00",
+          "tenelec": 5.21875
+        },
+        {
+          "occurtime": "2026-09-23_00:00:00",
+          "tenelec": 7.4375
+        },
+        {
+          "occurtime": "2026-09-24_00:00:00",
+          "tenelec": 3.59375
+        },
+        {
+          "occurtime": "2026-09-25_00:00:00",
+          "tenelec": 4.5
+        },
+        {
+          "occurtime": "2026-09-26_00:00:00",
+          "tenelec": 1.8125
+        },
+        {
+          "occurtime": "2026-09-27_00:00:00",
+          "tenelec": 1.375
+        },
+        {
+          "occurtime": "2026-09-28_00:00:00",
+          "tenelec": 0.03125
+        },
+        {
+          "occurtime": "2026-09-29_00:00:00",
+          "tenelec": 2.375
+        },
+        {
+          "occurtime": "2026-09-30_00:00:00",
+          "tenelec": 1.125
+        }
+      ]
+    }
+  ]
+}

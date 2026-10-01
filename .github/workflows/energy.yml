@@ -1,0 +1,93 @@
+name: AUX napi fogyasztás
+
+on:
+  schedule:
+    - cron: "0 20 * * 0"
+      timezone: "Europe/Budapest"
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: Kezdőnap (YYYY-MM-DD)
+        type: string
+        default: "2026-09-16"
+      end_date:
+        description: Zárónap (üresen a mai nap)
+        type: string
+        default: ""
+      test_only:
+        description: Csak tesztek, felhőbejelentkezés nélkül
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: acfreedom-cloud
+  cancel-in-progress: false
+
+jobs:
+  energy:
+    name: Tesztek és napi export
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONUNBUFFERED: "1"
+      PYTHONUTF8: "1"
+    steps:
+      - name: Forrás letöltése
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5, Node.js 24
+        with:
+          persist-credentials: false
+      - name: Python telepítése
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6, Node.js 24
+        with:
+          python-version: "3.x"
+          check-latest: true
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-email.txt
+      - name: Függőségek telepítése
+        run: python -m pip install -r requirements.txt -r requirements-email.txt
+      - name: Tesztek (felhőhívás nélkül)
+        run: python -m unittest discover -s tests -v
+      - name: Fogyasztás lekérése
+        if: ${{ !inputs.test_only }}
+        env:
+          ACFREEDOM_USERNAME: ${{ secrets.ACFREEDOM_USERNAME }}
+          ACFREEDOM_PASSWORD: ${{ secrets.ACFREEDOM_PASSWORD }}
+          ACFREEDOM_DEVICE: ${{ vars.ACFREEDOM_DEVICE }}
+          ACFREEDOM_REGION: ${{ vars.ACFREEDOM_REGION || 'eu' }}
+          ACFREEDOM_START: ${{ inputs.start_date || '2026-09-16' }}
+          ACFREEDOM_END: ${{ inputs.end_date }}
+        shell: bash
+        run: |
+          set +e
+          python acfreedom_energy_probe.py --non-interactive --output output
+          result=$?
+          if [ "$result" -eq 2 ]; then
+            echo "::warning::Nincs felismerhető mérési adat. Ez nem jelent 0 kWh fogyasztást; ellenőrizd a summary.json fájlt."
+            exit 0
+          fi
+          exit "$result"
+      - name: Eredmények mentése
+        if: ${{ always() && !inputs.test_only }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6, Node.js 24
+        with:
+          name: aux-energy-${{ github.run_id }}
+          path: output/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Fogyasztási riport küldése e-mailben
+        if: ${{ always() && !inputs.test_only }}
+        env:
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST || vars.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT || vars.SMTP_PORT || '587' }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          WORKFLOW_STATUS: ${{ job.status }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python send_energy_email.py --output output
