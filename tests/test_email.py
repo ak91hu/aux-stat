@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from email.parser import BytesParser
 from email.policy import default
+from decimal import Decimal
 from unittest.mock import MagicMock, Mock, patch
 
 import send_energy_email as mail
@@ -31,6 +32,8 @@ class EmailTests(unittest.TestCase):
         self.assertIn("1.50 kWh", body)
         self.assertIn("2026-09-30: ismeretlen (nincs adat)", body)
         self.assertIn("2026-10-01: 0.5 kWh (részleges)", body)
+        self.assertIn("Napi medián: 1,00 kWh", body)
+        self.assertNotIn("https://github.com", body)
         attachments = list(message.iter_attachments())
         self.assertEqual(len(attachments), 1)
         self.assertEqual(attachments[0].get_filename(), "energy_daily.csv")
@@ -39,6 +42,9 @@ class EmailTests(unittest.TestCase):
         html = parsed.get_body(preferencelist=("html",)).get_content()
         self.assertIn("1,50", html)
         self.assertIn("1,00", html)  # Average excludes the partial and missing day.
+        self.assertIn("Napi medián", html)
+        self.assertNotIn("https://github.com", html)
+        self.assertNotIn("<a ", html)
         images = [part for part in parsed.walk() if part.get_content_type() == "image/png"]
         self.assertEqual(len(images), 1)
         self.assertIn("cid:" + images[0]["Content-ID"][1:-1], html)
@@ -54,6 +60,22 @@ class EmailTests(unittest.TestCase):
         self.assertNotIn("összege: 0", body)
         self.assertEqual(list(message.iter_attachments()), [])
         self.assertNotIn("cid:", message.get_body(preferencelist=("html",)).get_content())
+        self.assertIn("Napi medián: — kWh", body)
+
+    def test_statistics_exclude_partial_missing_and_invalid_values_but_include_zero(self):
+        rows = [{"consumption_kwh": value, "status": status} for value, status in (
+            ("0", "reported"), ("1.2", "reported"), ("9", "reported"),
+            ("100", "partial"), ("", "no_data"), ("NaN", "reported"),
+            ("-1", "reported"), ("50", "query_error"))]
+        self.assertEqual(mail.daily_statistics(rows), (Decimal("3.4"), Decimal("1.2"), Decimal("9")))
+        rows.append({"consumption_kwh": "2.4", "status": "reported"})
+        self.assertEqual(mail.daily_statistics(rows)[1], Decimal("1.8"))
+
+    def test_statistics_without_complete_days_are_unknown(self):
+        for rows in ([], [{"consumption_kwh": "1", "status": "partial"}],
+                     [{"consumption_kwh": "", "status": "no_data"}]):
+            with self.subTest(rows=rows):
+                self.assertEqual(mail.daily_statistics(rows), (None, None, None))
 
     def test_html_escapes_values_and_rejects_unsafe_links(self):
         rows = [{"date": "<script>alert(1)</script>", "consumption_kwh": "0", "status": "reported"}]

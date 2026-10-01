@@ -53,11 +53,11 @@ https://www.brevo.com/products/transactional-email/
 
 Más hitelesített SMTP-szolgáltatóval is működik. Az e-mail tartalmazza az ismert
 fogyasztás összegét, a napi bontást, a részleges és hiányzó napok jelölését,
-a workflow linkjét, valamint az energy_daily.csv mellékletet.
-Az e-mail HTML formátumú: kiemelt összesítés, napi átlag és legnagyobb napi
+a csatolt energy_daily.csv fájlt. Az e-mail nem tartalmaz letöltési vagy workflow-linket.
+Az e-mail HTML formátumú: összesítés, napi átlag, medián és legnagyobb napi
 érték, beágyazott PNG oszlopdiagram és napi táblázat szerepel benne.
-Az átlag és a maximum csak a jelentett, nem részleges napokból készül.
-A grafikon a legutóbbi 31 napot mutatja (kék: jelentett, sárga: részleges,
+Az átlag, a medián és a maximum csak a jelentett, nem részleges napokból készül.
+A grafikon a legutóbbi 31 napot mutatja (zöld: jelentett, barna: részleges,
 szürke kereszt: hiányzó adat). A táblázat és a CSV a teljes időszakot tartalmazza.
 A kép magában a levélben utazik, nincs külső képkiszolgáló; képek tiltásakor
 is olvasható a táblázat. Szöveges levelezőhöz külön plain text változat készül.
