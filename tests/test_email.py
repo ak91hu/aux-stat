@@ -7,7 +7,9 @@ from pathlib import Path
 from email.parser import BytesParser
 from email.policy import default
 from decimal import Decimal
+from datetime import datetime
 from unittest.mock import MagicMock, Mock, patch
+from zoneinfo import ZoneInfo
 
 import send_energy_email as mail
 
@@ -26,8 +28,11 @@ class EmailTests(unittest.TestCase):
                          "2026-09-30;;no_data;day_report;False\n"
                          "2026-10-01;0.5;partial;day_report;True\n").encode("utf-8-sig")
             (output / "energy_daily.csv").write_bytes(csv_bytes)
-            message = mail.build_message(temp, "sender@example.com", "recipient@example.com",
-                                         "https://github.com/test/actions/runs/1", "success")
+            with patch.object(mail, "datetime", wraps=datetime) as clock:
+                clock.now.return_value = datetime(2026, 10, 2, 14, 35, 27, tzinfo=ZoneInfo("Europe/Budapest"))
+                message = mail.build_message(temp, "sender@example.com", "recipient@example.com",
+                                             "https://github.com/test/actions/runs/1", "success")
+                clock.now.assert_called_once_with(ZoneInfo("Europe/Budapest"))
         body = message.get_body(preferencelist=("plain",)).get_content()
         self.assertIn("1.50 kWh", body)
         self.assertIn("2026-09-30: ismeretlen (nincs adat)", body)
@@ -39,6 +44,7 @@ class EmailTests(unittest.TestCase):
         self.assertEqual(attachments[0].get_filename(), "energy_daily.csv")
         self.assertEqual(attachments[0].get_payload(decode=True), csv_bytes)
         parsed = BytesParser(policy=default).parsebytes(message.as_bytes())
+        self.assertEqual(str(parsed["Subject"]), "AUX Aura energiariport • 2026-10-02 14:35:27 CEST • összesen: 1,50 kWh")
         html = parsed.get_body(preferencelist=("html",)).get_content()
         self.assertIn("1,50", html)
         self.assertIn("1,00", html)  # Average excludes the partial and missing day.
@@ -53,7 +59,10 @@ class EmailTests(unittest.TestCase):
 
     def test_missing_output_reports_unknown_not_zero(self):
         with tempfile.TemporaryDirectory() as temp:
-            message = mail.build_message(temp, "sender@example.com", "recipient@example.com", workflow_status="failure")
+            with patch.object(mail, "datetime", wraps=datetime) as clock:
+                clock.now.return_value = datetime(2026, 12, 2, 14, 35, 27, tzinfo=ZoneInfo("Europe/Budapest"))
+                message = mail.build_message(temp, "sender@example.com", "recipient@example.com", workflow_status="failure")
+        self.assertEqual(str(message["Subject"]), "AUX Aura energiariport • 2026-12-02 14:35:27 CET • összesen: ismeretlen (nincs mérési eredmény)")
         body = message.get_body(preferencelist=("plain",)).get_content()
         self.assertIn("A fogyasztás ismeretlen", body)
         self.assertIn("failure", body)

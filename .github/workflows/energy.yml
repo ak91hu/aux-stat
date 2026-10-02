@@ -6,14 +6,6 @@ on:
       timezone: "Europe/Budapest"
   workflow_dispatch:
     inputs:
-      start_date:
-        description: Kezdőnap (YYYY-MM-DD)
-        type: string
-        default: "2026-09-16"
-      end_date:
-        description: Zárónap (üresen a mai nap)
-        type: string
-        default: ""
       test_only:
         description: Csak tesztek, felhőbejelentkezés nélkül
         type: boolean
@@ -80,8 +72,8 @@ jobs:
           ACFREEDOM_PASSWORD: ${{ secrets.ACFREEDOM_PASSWORD }}
           ACFREEDOM_DEVICE: ${{ vars.ACFREEDOM_DEVICE }}
           ACFREEDOM_REGION: ${{ vars.ACFREEDOM_REGION || 'eu' }}
-          ACFREEDOM_START: ${{ inputs.start_date || '2026-09-16' }}
-          ACFREEDOM_END: ${{ inputs.end_date }}
+          ACFREEDOM_START: "2026-09-16"
+          ACFREEDOM_END: ""
         shell: bash
         run: |
           set +e

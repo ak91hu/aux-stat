@@ -13,9 +13,29 @@ import sys
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 from decimal import Decimal, InvalidOperation
+from datetime import datetime
 from html import escape
 from pathlib import Path
 from statistics import median
+from zoneinfo import ZoneInfo
+
+
+STATUS_EXPLANATIONS = (
+    ("Jelentett", "Egy már elmúlt naphoz a felhőből kapott fogyasztási érték. "
+     "A riport lezárt napként kezeli; az érték napi összesítésből vagy az elérhető óránkénti adatok összegéből származik."),
+    ("Részleges", "A lekérdezés napja még nem ért véget. Az érték csak a már lezárt órákhoz "
+     "elérhető fogyasztást tartalmazza, ezért a nap végéig még nőhet. Ez önmagában nem hiba."),
+    ("Nincs adat", "A felhő nem adott kiolvasható fogyasztási értéket az adott napra. "
+     "Ez nem jelent 0 kWh-t; az ilyen nap kimarad a számításokból."),
+    ("Lekérdezési hiba", "Az adat lekérése sikertelen volt, ezért a napi fogyasztás ismeretlen. "
+     "Ez a nap is kimarad a számításokból."),
+)
+STATISTICS_EXPLANATION = (
+    "Az ismert fogyasztás összege a jelentett és a részleges napokat is tartalmazza. "
+    "Az átlag, a medián és a maximum csak a lezárt, jelentett napokból készül, "
+    "hogy a még befejezetlen nap ne torzítsa az összehasonlítást. "
+    "A jelentett 0 kWh valódi adatként beleszámít."
+)
 
 
 def measurement(row):
@@ -107,9 +127,13 @@ def html_report(rows, daily, total, chart_id, workflow_url, workflow_status):
                           f'<td style="padding:10px 4px;border-bottom:1px solid #e5e7e4;">{escape(row["date"])}</td>'
                           f'<td align="right" style="padding:10px 4px;border-bottom:1px solid #e5e7e4;font-variant-numeric:tabular-nums;">{display_number(measurement(row))}</td>'
                           f'<td style="padding:10px 4px;border-bottom:1px solid #e5e7e4;color:{color};font-size:12px;">{label}</td></tr>')
-    notes = "A mai nap részleges lehet. A hiányzó mérés nem jelent nulla fogyasztást."
+    notes = ""
     if total is None:
         notes = "A fogyasztás ismeretlen; nem sikerült mérési eredményt lekérni. Ez nem jelent 0 kWh-t."
+    explanations = "".join(
+        f'<p style="margin:8px 0;font-size:13px;color:#626963;line-height:1.6;">'
+        f'<b style="color:#252b27;">{escape(label)}:</b> {escape(description)}</p>'
+        for label, description in STATUS_EXPLANATIONS)
     status = {"success": "Sikeres", "failure": "Hibás", "cancelled": "Megszakított"}.get(workflow_status, "Ismeretlen")
     graph = (f'<h2 style="font-size:18px;margin:28px 0 12px;">Napi fogyasztás</h2>'
              f'<p style="font-size:12px;color:#64748b;">{escape(rows[-31:][0]["date"])} – {escape(rows[-1]["date"])}'
@@ -123,9 +147,11 @@ def html_report(rows, daily, total, chart_id, workflow_url, workflow_status):
 <tr><td style="padding:28px 20px 20px;border-top:3px solid #39746b;"><div style="font-size:12px;color:#626963;">AUX / Fogyasztási riport</div>
 <h1 style="margin:10px 0;font-size:28px;font-weight:normal;">Klíma energiafogyasztás</h1><div style="color:#626963;font-size:14px;">{escape(period)}</div></td></tr>
 <tr><td style="padding:0 14px 20px;"><table role="presentation" aria-label="Fogyasztási összesítés" width="100%" cellspacing="6" cellpadding="0" style="font-size:14px;"><tbody>{statistics_rows}</tbody></table>
-<p style="color:#626963;font-size:12px;line-height:1.6;">Az összeg a részleges napokat is tartalmazza. Az átlag, a medián és a maximum csak a teljes, jelentett napokból készül.</p>
-<p style="color:#626963;font-size:13px;line-height:1.6;">{notes}<br>
-Adattal: <b>{escape(str(daily.get('days_with_data', 0)))}</b> nap · Hiányzó: <b>{escape(str(daily.get('days_without_data', '?')))}</b> nap · Részleges: <b>{escape(str(daily.get('partial_days', 0)))}</b> nap</p>
+<p style="color:#626963;font-size:12px;line-height:1.6;">{STATISTICS_EXPLANATION}</p>
+<p style="color:#626963;font-size:13px;line-height:1.6;">{notes + '<br>' if notes else ''}
+Adattal (részlegesekkel együtt): <b>{escape(str(daily.get('days_with_data', 0)))}</b> nap · Hiányzó: <b>{escape(str(daily.get('days_without_data', '?')))}</b> nap · Ebből részleges: <b>{escape(str(daily.get('partial_days', 0)))}</b> nap</p>
+<h2 style="font-size:18px;margin:24px 0 12px;">Mit jelentenek az adatállapotok?</h2>
+{explanations}
 {graph}<h2 style="font-size:18px;margin:28px 0 12px;">Napi részletek</h2>
 <table width="100%" cellspacing="0" cellpadding="0" style="font-size:14px;"><thead><tr style="color:#626963;">
 <th scope="col" align="left" style="padding:10px 4px;border-bottom:1px solid #b9c1bb;">Dátum</th><th scope="col" align="right" style="padding:10px 4px;border-bottom:1px solid #b9c1bb;">kWh</th><th scope="col" align="left" style="padding:10px 4px;border-bottom:1px solid #b9c1bb;">Adat állapota</th>
@@ -150,8 +176,10 @@ def build_message(output, sender, recipient, workflow_url="", workflow_status="u
         with csv_path.open(encoding="utf-8-sig", newline="") as stream:
             rows = list(csv.DictReader(stream, delimiter=";"))
     total = daily.get("known_consumption_kwh")
-    message["Subject"] = (f"AUX fogyasztási riport • {display_number(total)} kWh" if total is not None
-                          else "AUX fogyasztási riport — nincs mérési eredmény")
+    generated_at = datetime.now(ZoneInfo(summary.get("local_timezone", "Europe/Budapest")))
+    title = f"AUX Aura energiariport • {generated_at:%Y-%m-%d %H:%M:%S %Z}"
+    message["Subject"] = (f"{title} • összesen: {display_number(total)} kWh" if total is not None
+                          else f"{title} • összesen: ismeretlen (nincs mérési eredmény)")
     lines = ["AUX klíma — napi fogyasztás", ""]
     if rows:
         lines.append(f"Időszak: {rows[0]['date']} – {rows[-1]['date']}")
@@ -161,11 +189,14 @@ def build_message(output, sender, recipient, workflow_url="", workflow_status="u
     lines.extend([f"Napi átlag: {display_number(average)} kWh",
                   f"Napi medián: {display_number(daily_median)} kWh",
                   f"Legnagyobb napi érték: {display_number(peak)} kWh",
-                  "Az átlag, a medián és a maximum csak a teljes, jelentett napokból készül."])
+                  STATISTICS_EXPLANATION])
     if daily:
-        lines.extend([f"Adattal rendelkező napok: {daily.get('days_with_data', '?')}",
+        lines.extend([f"Adattal rendelkező napok (részlegesekkel együtt): {daily.get('days_with_data', '?')}",
                       f"Hiányzó napok: {daily.get('days_without_data', '?')}",
-                      f"Részleges napok: {daily.get('partial_days', '?')}"])
+                      f"Ebből részleges napok: {daily.get('partial_days', '?')}"])
+    lines.extend(["", "Mit jelentenek az adatállapotok?"])
+    lines.extend(f"{label}: {description}" for label, description in STATUS_EXPLANATIONS)
+    lines.append("")
     lines.extend([f"Workflow állapota: {workflow_status}",
                   f"Lekérdezés eredménye: {summary.get('outcome', 'nem készült összegzés')}", ""])
     if rows:

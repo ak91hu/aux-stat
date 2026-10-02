@@ -54,6 +54,9 @@ https://www.brevo.com/products/transactional-email/
 Más hitelesített SMTP-szolgáltatóval is működik. Az e-mail tartalmazza az ismert
 fogyasztás összegét, a napi bontást, a részleges és hiányzó napok jelölését,
 a csatolt energy_daily.csv fájlt. Az e-mail nem tartalmaz letöltési vagy workflow-linket.
+A tárgy formátuma: `AUX Aura energiariport • YYYY-MM-DD HH:MM:SS CET/CEST • összesen: X,XX kWh`.
+Az összeg mindig a telepítés napjától (2026-09-16) a mai napig elérhető teljes
+fogyasztás, a mai részleges adattal együtt. Mérési adat nélkül „összesen: ismeretlen” szerepel.
 Az e-mail HTML formátumú: összesítés, napi átlag, medián és legnagyobb napi
 érték, beágyazott PNG oszlopdiagram és napi táblázat szerepel benne.
 Az átlag, a medián és a maximum csak a jelentett, nem részleges napokból készül.
@@ -76,7 +79,7 @@ A START.bat továbbra is a helyi lekérdezést indítja, e-mailt nem küld autom
 
 1. [Actions → AUX napi fogyasztás](https://github.com/ak91hu/aux-stat/actions/workflows/energy.yml).
 2. **Run workflow**, ág: `main`.
-3. A kezdőnap **2026-09-16**, a zárónap üresen az aktuális budapesti nap.
+3. Az időszak mindig **2026-09-16-tól az aktuális budapesti napig** tart.
    A **Csak tesztek** opciót hagyd kikapcsolva a valódi lekéréshez.
 4. Indítsd el. A tesztek sikeres lefutása után megtörténik a belépés és az export.
 5. A futás oldalán az **Artifacts → aux-energy-...** csomagot töltsd le.

@@ -35,7 +35,7 @@ A repository: [ak91hu/aux-stat](https://github.com/ak91hu/aux-stat).
    pontos eszköznév vagy endpointId. Az `ACFREEDOM_REGION` alapértéke `eu`.
 4. Az [Actions → AUX napi fogyasztás](https://github.com/ak91hu/aux-stat/actions/workflows/energy.yml)
    oldalon válaszd a **Run workflow** lehetőséget a `main` ágon.
-   A kezdőnap alapértéke `2026-09-16`; üres zárónap esetén a mai napig kérdez.
+   Az emailes workflow mindig `2026-09-16`-tól a mai napig kérdez.
 
 A workflow vasárnap **20:00-kor, Europe/Budapest időzóna szerint** van
 ütemezve. A kézi indítás is elérhető; a push nem indít fogyasztáslekérést.
@@ -44,8 +44,11 @@ nem másolja át másik repó belépési vagy SMTP-adatait.
 
 A **Csak tesztek** mód felhőbejelentkezés és e-mail-küldés nélkül fut.
 Normál futásnál az eredmények az `aux-energy-...` artifactban tölthetők le
-7 napig. Az e-mail összesítést, napi átlagot, legnagyobb napi értéket,
+7 napig. Az e-mail összesítést, napi átlagot, mediánt, legnagyobb napi értéket,
 a legutóbbi 31 nap grafikonját és a teljes időszak CSV-jét tartalmazza.
+A tárgyban az „AUX Aura energiariport” szöveg, a generálás másodperc pontosságú
+időpontja és a telepítés óta ismert teljes fogyasztás szerepel „összesen” jelöléssel.
+A mai nap elérhető részleges fogyasztása is beleszámít; mérési adat nélkül az összeg ismeretlen.
 A hiányzó és részleges napokat külön jelöli. A workflow a felhőbejelentkezés előtt ellenőrzi a szükséges beállításokat,
 és hiány esetén csak a hiányzó változók nevét írja ki. Sikertelen
 levélküldés hibássá teszi a workflow-t.
